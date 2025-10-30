@@ -383,16 +383,9 @@ void print_escaped_for_html_keywords(FILE *f, const char *str)
             fprintf(f, ".html\">%s</a>", str);
         }
         else {
+            /* duplicated code here: removed the if condition.*/
             /* keyword index */
-            if (st->n_keys > 0 &&
-                strcmp(st->module_info.keywords[2], str) == 0) {
-
-                /* TODO: fprintf(f, _("keywords: ")); */
-                fprintf(f, "<a href=\"keywords.html#%s\">%s</a>", str, str);
-            }
-            else {
-                fprintf(f, "<a href=\"keywords.html#%s\">%s</a>", str, str);
-            }
+            fprintf(f, "<a href=\"keywords.html#%s\">%s</a>", str, str);
         }
     }
 }

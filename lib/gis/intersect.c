@@ -188,6 +188,6 @@ int G_intersect_line_segments(double ax1, double ay1, double ax2, double ay2,
         }
         return 2;
     }
-
-    return 0; /* should not be reached */
+    /* End of function. No dead code. */
+    // return 0; /* should not be reached */
 }

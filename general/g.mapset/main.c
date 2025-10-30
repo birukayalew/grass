@@ -43,20 +43,63 @@ static void serialize_and_print_json_object(G_JSON_Value *root_value)
     G_json_value_free(root_value);
 }
 
+// Separate function to refactor nested code.
+static void list_mapsets_in_format(const char *location_new,
+                                    int format,
+                                    G_JSON_Object *root_object)
+{
+    char **ms = G_get_available_mapsets();
+
+    G_JSON_Array *mapsets_array = NULL;
+    G_JSON_Value *mapsets_value = NULL;
+
+    if (format == JSON) {
+        mapsets_value = G_json_value_init_array();
+        if (!mapsets_value)
+            G_fatal_error(_("Failed to initialize JSON array. Out of memory?"));
+
+        mapsets_array = G_json_array(mapsets_value);
+        G_json_object_set_string(root_object, "project", location_new);
+    }
+
+    for (int nmapsets = 0; ms[nmapsets]; nmapsets++) {
+        if (G_mapset_permissions(ms[nmapsets]) <= 0)
+            continue;
+
+        switch (format) {
+            case PLAIN:
+                fprintf(stdout, "%s ", ms[nmapsets]);
+                break;
+            case JSON:
+                G_json_array_append_string(mapsets_array, ms[nmapsets]);
+                break;
+        }
+    }
+}
 int main(int argc, char *argv[])
 {
     int ret;
     struct GModule *module;
     struct {
-        struct Option *gisdbase, *location, *mapset, *format;
+        struct Option *gisdbase;
+        struct Option *location;
+        struct Option *mapset;
+        struct Option *format;
     } opt;
     struct {
-        struct Flag *add, *list, *curr;
+        struct Flag *add;
+        struct Flag *list;
+        struct Flag *curr;
     } flag;
-    const char *gisdbase_old, *location_old, *mapset_old;
-    const char *gisdbase_new, *location_new, *mapset_new;
+    const char *gisdbase_old; 
+    const char *location_old;
+    const char *mapset_old;
+    const char *gisdbase_new;
+    const char *location_new;
+    const char *mapset_new;
     const char *gis_lock;
-    char *mapset_old_path, *mapset_new_path;
+    char *mapset_old_path;
+    char *mapset_new_path;
     char *lock_prog;
     const char *shell;
     char path[GPATH_MAX];
@@ -159,39 +202,11 @@ int main(int argc, char *argv[])
         location_new = location_old;
 
     if (flag.list->answer) {
-        char **ms;
-        int nmapsets;
-        G_JSON_Array *mapsets_array = NULL;
-        G_JSON_Value *mapsets_value = NULL;
-
         G_setenv_nogisrc("LOCATION_NAME", location_new);
         G_setenv_nogisrc("GISDBASE", gisdbase_new);
 
-        ms = G_get_available_mapsets();
-        if (format == JSON) {
-            mapsets_value = G_json_value_init_array();
-            if (mapsets_value == NULL) {
-                G_fatal_error(
-                    _("Failed to initialize JSON array. Out of memory?"));
-            }
-            mapsets_array = G_json_array(mapsets_value);
+        list_mapsets_in_format(location_new, format, root_object);
 
-            G_json_object_set_string(root_object, "project", location_new);
-        }
-
-        for (nmapsets = 0; ms[nmapsets]; nmapsets++) {
-            if (G_mapset_permissions(ms[nmapsets]) > 0) {
-                switch (format) {
-                case PLAIN:
-                    fprintf(stdout, "%s ", ms[nmapsets]);
-                    break;
-
-                case JSON:
-                    G_json_array_append_string(mapsets_array, ms[nmapsets]);
-                    break;
-                }
-            }
-        }
         switch (format) {
         case PLAIN:
             fprintf(stdout, "\n");
@@ -307,5 +322,5 @@ int main(int argc, char *argv[])
 
     G_free(mapset_new_path);
 
-    return (EXIT_SUCCESS);
+    return EXIT_SUCCESS;
 }

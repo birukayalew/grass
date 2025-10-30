@@ -115,8 +115,11 @@ char **G_ls2(const char *dir, int *num_files)
     }
     closedir(dfd);
 
-    /* Sort list of filenames alphabetically */
-    qsort(dir_listing, n, sizeof(char *), cmp_names);
+    /* guard the call to avoid passing null argument */
+    if (n > 1) {
+        /* Sort list of filenames alphabetically */
+        qsort(dir_listing, n, sizeof(char *), cmp_names);
+    }
 
     *num_files = n;
     return dir_listing;

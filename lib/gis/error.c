@@ -279,12 +279,18 @@ void G_unset_error_routine(void)
 /* Print info to stderr and optionally to log file and optionally send mail */
 static void print_error(const char *msg, const int type)
 {
-    int fatal, format;
+    /* Fix: Add Explicit Bounds Check */ 
+    int fatal FALSE;
+    int format;
+
+    /* VALIDATE type*/
+    if (type < MSG || type > ERR) {
+        /* Fallback to ERR or ignore? Better to handle gracefully */
+        type = ERR;
+    }
 
     if (type == ERR)
         fatal = TRUE;
-    else /* WARN */
-        fatal = FALSE;
 
     if ((type == MSG || type == WARN || type == ERR) &&
         ext_error) { /* Function defined by application */

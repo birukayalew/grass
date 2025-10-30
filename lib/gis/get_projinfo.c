@@ -132,18 +132,24 @@ char *G_get_projwkt(void)
     int c;
 
     G_file_name(path, "", WKT_FILE, "PERMANENT");
-    if (access(path, 0) != 0) {
-        if (G_projection() != PROJECTION_XY) {
-            G_debug(1, "<%s> file not found for location <%s>", WKT_FILE,
-                    G_location());
-        }
-        return NULL;
-    }
-
+    // Security - high priority
+    // Remove the separate access check. Instead, attempt fopen directly, 
+    // then inspect errno on failure to distinguish "file not found" (graceful handling, like returning NULL) from other errors (fatal). 
+    // This makes the existence and access check part of the atomic fopen operation,
     fp = fopen(path, "r");
-    if (!fp)
-        G_fatal_error(_("Unable to open input file <%s>: %s"), path,
-                      strerror(errno));
+    if (!fp) {
+        if (errno == ENOENT) {  // File does not exist
+            if (G_projection() != PROJECTION_XY) {
+                G_debug(1, "<%s> file not found for location <%s>", WKT_FILE,
+                    G_location());
+            }
+        return NULL;
+    } else {
+            // Other errors (e.g., permissions, I/O issues)
+            G_fatal_error(_("Unable to open input file <%s>: %s"), path,
+                          strerror(errno));
+        }
+    }
 
     wktstring = G_malloc(1024 * sizeof(char));
     nalloc = 1024;
@@ -241,34 +247,40 @@ char *G_get_projsrid(void)
     int c;
 
     G_file_name(path, "", SRID_FILE, "PERMANENT");
-    if (access(path, 0) != 0) {
-        if (G_projection() != PROJECTION_XY) {
-            struct Key_Value *projepsg;
-            const char *epsg_num;
+    // Security - high priority
+    // Remove the separate access check. Instead, attempt fopen directly, 
+    // then inspect errno on failure to distinguish "file not found" (graceful handling, like returning NULL) from other errors (fatal). 
+    // This makes the existence and access check part of the atomic fopen operation,
+    fp = fopen(path, "r");
+    if (!fp) {
+        if (errno == ENOENT) {
+            if (G_projection() != PROJECTION_XY) {
+                struct Key_Value *projepsg;
+                const char *epsg_num;
 
-            G_debug(1, "<%s> file not found for location <%s>", SRID_FILE,
-                    G_location());
+                G_debug(1, "<%s> file not found for location <%s>", SRID_FILE,
+                        G_location());
 
-            /* for backwards compatibility, check if PROJ_EPSG exists */
-            if ((projepsg = G_get_projepsg()) != NULL) {
-                epsg_num = G_find_key_value("epsg", projepsg);
-                if (*epsg_num) {
-                    G_debug(1, "Using <%s> file instead for location <%s>",
-                            EPSG_FILE, G_location());
-                    G_asprintf(&sridstring, "EPSG:%s", epsg_num);
-                    G_free_key_value(projepsg);
+                /* for backwards compatibility, check if PROJ_EPSG exists */
+                if ((projepsg = G_get_projepsg()) != NULL) {
+                    epsg_num = G_find_key_value("epsg", projepsg);
+                    if (*epsg_num) {
+                        G_debug(1, "Using <%s> file instead for location <%s>",
+                                EPSG_FILE, G_location());
+                        G_asprintf(&sridstring, "EPSG:%s", epsg_num);
+                        G_free_key_value(projepsg);
 
-                    return sridstring;
+                        return sridstring;
+                    }
                 }
             }
-        }
-        return NULL;
-    }
-
-    fp = fopen(path, "r");
-    if (!fp)
-        G_fatal_error(_("Unable to open input file <%s>: %s"), path,
+            return NULL;
+        } else {
+            G_fatal_error(_("Unable to open input file <%s>: %s"), path,
                       strerror(errno));
+        }
+    }
+        
 
     sridstring = G_malloc(1024 * sizeof(char));
     nalloc = 1024;

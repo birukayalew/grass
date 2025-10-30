@@ -81,14 +81,28 @@ static int G__open_misc(const char *dir, const char *element, const char *name,
             return -1;
 
         G_file_name_misc(path, dir, element, name, mapset);
-        if (mode == 1 || access(path, 0) != 0) {
+        if (mode == 1) {
+            /* Ensure directory exists */
             G__make_mapset_element_misc(dir, name);
-            close(creat(path, 0666));
+
+            /* Atomically create file only if it doesn't exist */
+            int cfd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0600);
+            if (cfd >= 0) {
+                close(cfd);
+            } else if (errno != EEXIST) {
+                G_warning("G__open_misc(write): Unable to create '%s': %s", path,
+                          strerror(errno));
+                return -1;
+            }
         }
 
-        if ((fd = open(path, mode)) < 0)
+        /* Open file for writing (O_WRONLY) or read/write (O_RDWR) */
+        int open_flags = (mode == 1) ? O_WRONLY : O_RDWR;
+        if ((fd = open(path, open_flags)) < 0) {
             G_warning("G__open_misc(write): Unable to open '%s': %s", path,
                       strerror(errno));
+            return -1;
+        }
         return fd;
     }
     return -1;

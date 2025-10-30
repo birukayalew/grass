@@ -196,11 +196,14 @@ int make_mapset_element_impl(const char *p_path, const char *p_element,
     p = path;
     while (*p)
         p++;
-    /* add trailing slash if missing */
-    --p;
-    if (*p++ != '/') {
+   /* add trailing slash if missing (handle empty base safely) */
+    if (p == path) {
         *p++ = '/';
-        *p = 0;
+        *p   = 0;
+    }
+    else if (*(p - 1) != '/') {
+        *p++ = '/';
+        *p   = 0;
     }
 
     /* now append element, one directory at a time, to path */

@@ -63,18 +63,18 @@ static int G__mkstemp(char *template, int flags, int mode)
         if (!next(replace, num_replace))
             return -1;
 
-        if (access(template, F_OK) == 0)
-            continue;
+        // Remove access() — that's the TOCTOU!
+        // Use O_CREAT | O_EXCL instead
+        fd = open(template, flags | O_CREAT | O_EXCL, mode);
 
-        if (!flags)
-            return 0;
-
-        fd = open(template, flags, mode);
         if (fd < 0) {
             if (errno == EEXIST)
                 continue;
             return -1;
         }
+
+        if (!flags)
+            return 0;
 
         return fd;
     }
